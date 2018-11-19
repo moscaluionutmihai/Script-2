@@ -1,0 +1,28 @@
+
+
+fi1=1.txt
+fi2=2.txt
+
+s=`cat 2.txt`
+
+cat 1.txt |while read i
+do
+	cat 2.txt | while read line
+	do
+	if [[ "`awk -F'|' '{print $2}' $line` -eq `awk -F'|' '{print $1}'`" ]] ; then
+		echo $line $i
+	fi
+	done
+done
+
+
+
+
+(count(*)) medium 
+
+            3773    188
+          194538    189
+          717608    187
+		  sum 		915919
+
+3 row(s) retrieved.

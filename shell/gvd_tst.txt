@@ -1,0 +1,41 @@
+
+lsav@paymob10 > cat gvd_tst
+#!/usr/bin/bash
+##!/usr/bin/ksh
+
+ORAUSER=voms;
+ORAPASS=voms;
+
+ROWNUM=-2;
+
+ sqlplus -s $ORAUSER/$ORAPASS < <(echo "set feedback off"; echo "set colsep \"'\"";echo "set lines 32676";echo "set pages 8000"; echo "set num 30"; echo "$1";) | \
+ sed "/^$/d" | tr -d '\t'|tr -s ' '|sed s/[\(]//g|sed s/[\*]//g|sed s/[\)]//g|while read cols; do
+  ((++ROWNUM == -1)) && eval "array_cols=( $(echo ${cols} | tr \' ' ') )";
+  (( ROWNUM > 0 )) && (
+        for (( c = 0; c < ${#array_cols[*]}; c++ )); do
+         echo -e " ${array_cols[(c) % ${#array_cols[*]}]} \t $(echo "$cols"|cut -d\' -f$((c+1)) )";
+        done; )
+        echo -e "\n";
+ done;
+lsav@paymob10 > 
+
+
+
+lsav@paymob10 > cat gvd_pos_tst
+#!/usr/bin/bash
+##!/usr/bin/ksh
+
+ORAUSER=pos;
+ORAPASS=pos;
+
+ROWNUM=-2;
+
+ sqlplus -s $ORAUSER/$ORAPASS < <(echo "set feedback off"; echo "set colsep \"'\"";echo "set lines 32676";echo "set pages 8000"; echo "set num 30"; echo "$1";) | \
+ sed "/^$/d" | tr -d '\t'|tr -s ' '|sed s/[\(]//g|sed s/[\*]//g|sed s/[\)]//g|while read cols; do
+  ((++ROWNUM == -1)) && eval "array_cols=( $(echo ${cols} | tr \' ' ') )";
+  (( ROWNUM > 0 )) && (
+        for (( c = 0; c < ${#array_cols[*]}; c++ )); do
+         echo -e " ${array_cols[(c) % ${#array_cols[*]}]} \t $(echo "$cols"|cut -d\' -f$((c+1)) )";
+        done; )
+        echo -e "\n";
+ done;

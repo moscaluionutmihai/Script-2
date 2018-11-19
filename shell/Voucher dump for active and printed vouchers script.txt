@@ -1,0 +1,60 @@
+#!/bin/ksh
+
+#import of lsav profile for db access from crontab
+. /home/lsav/.profile
+#variables
+working_path="/ldata/support/CTS132733/"
+
+## Unload of the active voucher
+echo "set heading off linesize 500 pages 0 num 20 colsep '|'
+      select v.sne,
+          v.state,
+          TO_CHAR(tools_pkg.TimeInt8ToDateLCL(v.creationdate),'dd-MM-YYYY HH24:MI:ss'),
+          TO_CHAR(tools_pkg.TimeInt8ToDateLCL(v.activationdate),'dd-MM-YYYY HH24:MI:ss'),
+          TO_CHAR(tools_pkg.TimeInt8ToDateLCL(v.expirydate),'dd-MM-YYYY HH24:MI:ss'),
+          v.vouchercategoryid,
+          vc.faceamount/100000
+          from
+        voucher v, vouchercategory vc 
+                where v.vouchercategoryid=vc.vouchercategoryid and v.state<>61 and rownum<50
+        order by state;" | sqlplus -s voms/voms > ${working_path}/active_voucher_dump.txt
+                
+                
+                
+echo "
+Columns denomination:
+SNE | State | Creationdate | Activationdate | Expirydate | Vouchercategory | Amount     
+        
+                " > ${working_path}/active_voucher_dump_$(date "+%Y%m%d").txt
+nawk -FS="|" '{ gsub(/\t/,""); gsub(/ +\|/,"|"); gsub(/\| +/,"|"); gsub(/^ */,""); gsub(/ *$/,""); print }'< ${working_path}/active_voucher_dump.txt >> ${working_path}/active_voucher_dump_$(date "+%Y%m%d").txt
+rm ${working_path}/active_voucher_dump.txt
+
+
+##Unload of the inactive vouchers
+
+echo "set heading off linesize 500 pages 0 num 20 colsep '|'
+      select iv.sne,
+		iv.state,
+		TO_CHAR(tools_pkg.TimeInt8ToDateLCL(iv.creationdate),'dd-MM-YYYY HH24:MI:SS'),
+		TO_CHAR(tools_pkg.TimeInt8ToDateLCL(ipe.expirydate),'dd-MM-YYYY HH24:MI:SS'),
+		vc.VOUCHERCATEGORYID,
+		vc.faceamount/100000 DA 
+		from inventoryvoucher iv 
+		left join inventorysetope ipe on
+		iv.INVENTORYSETOPEID=ipe.INVENTORYSETOPEID
+		left join inventorypacket ip on
+		ipe.INVENTORYPACKETID=ip.INVENTORYPACKETID
+		left join vouchercategory vc on
+		ip.VOUCHERCATEGORYID=vc.VOUCHERCATEGORYID where rownum<50;" | sqlplus -s voms/voms > ${working_path}/inactive_voucher_dump.txt
+                
+                
+                
+echo "
+Columns denomination:
+SNE | State | Creationdate | Expirydate | Vouchercategory | Amount     
+        
+                " > ${working_path}/inactive_voucher_dump_$(date "+%Y%m%d").txt
+nawk -FS="|" '{ gsub(/\t/,""); gsub(/ +\|/,"|"); gsub(/\| +/,"|"); gsub(/^ */,""); gsub(/ *$/,""); print }'< ${working_path}/inactive_voucher_dump.txt >> ${working_path}/inactive_voucher_dump_$(date "+%Y%m%d").txt
+rm ${working_path}/inactive_voucher_dump.txt
+
+exit 0

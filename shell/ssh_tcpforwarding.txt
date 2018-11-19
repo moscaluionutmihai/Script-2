@@ -1,0 +1,18 @@
+TCP forwarding enable
+# ls -l /etc/ssh/sshd_config*
+# cat /etc/ssh/sshd_config
+# cd /etc/ssh/
+# cp -p sshd_config sshd_config_NO_TcpForwarding
+# vi sshd_config
+# sdiff -s sshd_config sshd_config_NO_TcpForwarding
+45c45
+AllowTcpForwarding yes                                          |  AllowTcpForwarding no
+
+# svcs -v ssh 
+STATE          NSTATE        STIME    CTID   FMRI
+online         -             Jun_23       63 svc:/network/ssh:default
+# svcadm restart network/ssh 
+# svcs -v ssh 
+STATE          NSTATE        STIME    CTID   FMRI
+online         -             10:23:23  94614 svc:/network/ssh:default
+# ^D

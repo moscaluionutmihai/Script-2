@@ -1,0 +1,32 @@
+#!/usr/bin/ksh
+
+## lsav@zsmsg12# ls -ltr /var/opt/ESG/pos/vSMS |grep "Aug 26"|head
+## -rw-r--r--   1 lsav     calapp       493 Aug 26 00:00 1408996810877513
+## -rw-r--r--   1 lsav     calapp       628 Aug 26 00:00 1408996820877542
+## -rw-r--r--   1 lsav     calapp       359 Aug 26 00:00 1408996840877571
+
+ls -ltr /var/opt/ESG/pos/vSMS |grep "Aug 26"|while read line 
+do 
+NAME=`echo $line|awk '{print $9}'`
+COUNT=`grep "NBLINES" /var/opt/ESG/pos/vSMS/${NAME} |awk -F'=' '{print $2}'`
+HOUR=`echo $line|awk '{print $8}'`
+DATE=`echo $line|awk '{print $7}'`
+MONTH=`echo $line|awk '{print $6}'`
+echo "$MONTH $DATE $HOUR : $COUNT\c"
+echo
+done >>1.txt
+
+## lsav@zsmsg12#  head 1.txt
+## Aug 26 00:00 : 3
+## Aug 26 00:00 : 4
+## Aug 26 00:00 : 2
+## Aug 26 00:00 : 1
+
+
+
+
+
+awk ' { mart[$3]+=$5; cnt[$3]++ }  END { for (x in mart) print x,mart[x] ;  print }' 1.txt | sort >> messages_per_second.txt
+
+
+

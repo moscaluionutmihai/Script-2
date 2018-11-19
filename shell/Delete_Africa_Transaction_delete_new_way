@@ -1,0 +1,47 @@
+#!/bin/bash
+
+set -x
+echo "mmso" |/usr/local/bin/oraenv
+export ORACLE_SID=mmso
+export ORACLE_BASE=/u01/app/oracle
+export ORACLE_HOME=/u01/app/oracle/product/11.2/dbhome_1
+export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/home/oracle/.loc
+
+
+#DATE_TO_DELETE=`date +"%Y-%m" -d "20 month ago"`
+#OLD_DATE_TO_DELETE=`date +"%Y-%m" -d "21 month ago"`
+
+
+OLD_NB_TO_DELETE=`grep execute /home/oracle/scripts/TransactionDelete_delete.sql|awk -F[-\'] '{print $3}'`
+OLD_Year_TO_DELETE=`grep execute /home/oracle/scripts/TransactionDelete_delete.sql|awk -F[-\'] '{print $2}'`
+OLD_DATE_TO_DELETE=`grep execute /home/oracle/scripts/TransactionDelete_delete.sql|awk -F[-\'] '{print $2"-"$3}'`
+NB_TO_DELETE=$((${OLD_NB_TO_DELETE} + 1 ))
+
+if [[ $NB_TO_DELETE -lt 8 ]]
+then
+
+    if [[ $NB_TO_DELETE -lt 10 ]]
+    then
+    DATE_TO_DELETE="${OLD_Year_TO_DELETE}-0${NB_TO_DELETE}"
+    else
+    DATE_TO_DELETE="${OLD_Year_TO_DELETE}-${NB_TO_DELETE}"
+    fi
+
+
+            
+
+            #Check state (if 1= still running, if 0=not running)
+STATE=$( cat /home/oracle/scripts/state_of_running_Africa.txt)
+STATE_PROCESS=$(pgrep sqlplus)
+
+        if [[ $STATE -eq 0 ]] && [[ -z $STATE_PROCESS ]]
+        then
+        echo 1 > /home/oracle/scripts/state_of_running_Africa.txt
+        mv /home/oracle/scripts/TransactionDelete_sql_AFRICA_result.txt /home/oracle/scripts/TransactionDelete_sql_AFRICA_result.txt_$OLD_DATE_TO_DELETE.txt
+        sed -i -e "s/$OLD_DATE_TO_DELETE/$DATE_TO_DELETE/g" /home/oracle/scripts/TransactionDelete_delete.sql
+        echo "@/home/oracle/scripts/TransactionDelete_delete.sql" | /u01/app/oracle/product/11.2/dbhome_1/bin/sqlplus canal_plus/wsx3edc >/home/oracle/scripts/error_cron.log 2>&1
+        echo 0 > /home/oracle/scripts/state_of_running_Africa.txt
+        else
+        echo " There is an instance running.. skipping "
+        fi
+fi

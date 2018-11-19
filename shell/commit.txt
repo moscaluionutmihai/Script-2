@@ -1,0 +1,18 @@
+#!/bin/bash
+
+file="$1"
+i="1"
+cat $file | while read line
+do
+
+echo $line >>file2.txt
+if [[ $i -eq 1 ]]
+then 
+echo "insert this line" >> file2.txt
+i="0"
+fi
+
+((i++))
+done
+
+exit 0

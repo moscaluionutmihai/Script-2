@@ -1,0 +1,12 @@
+ #!/bin/ksh
+ 
+INPUT_FILE=$2
+OUTPUT_FILE=$3
+
+COLUMNS=` echo "$INPUT_FILE"|awk '{ print $4}' |head -1 |while read line 
+do (echo "set heading off";echo "set pagesize 0";echo "set feedback off";echo "select COLUMN_NAME from USER_TAB_COLUMNS where lower(table_name)='$line';")|sqlplus -S possyr/pos |awk 'BEGIN {ORS=","} {print} END{print "\n" }' |sed '$d'|sed 's/\,$/\ /'
+done`
+echo $COLUMNS
+  echo "$INPUT_FILE" |sed "s/[\*]/$COLUMNS/g"  >> tmp1.txt
+  sed 's/,/||'\''|'\''||/g' tmp1.txt >>tmp2.txt
+fi

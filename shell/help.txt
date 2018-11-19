@@ -1,0 +1,26 @@
+
+
+
+
+
+	|===========================================================================================|
+	|		     			  Help menu		     		 	                                    |
+	|===========================================================================================|
+
+
+	In order to start using the tool type the following command: ./cps.sh
+	The script can be found under /ldata/support/vmarinescu/cpstool
+	This directory is also used for all the intermediate files.
+
+	In order to prepare cdr_files.txt go to CDRs directory corresponding to day of interest
+	(eg. ...m08/00/d10) and execute the following command:
+	cat ./*/* > /ldata/support/vmarinescu/cpstool/cdr_files.txt
+
+	Results can be found in /ldata/support/vmarinescu/cpstool/reports and will have the format
+	reportYYYYMMDD.txt based on the input day. Here you will also find report_avg.log that will
+	store data regarding the average call duration and total number of calls from that day.
+
+	It's not necessary to use the option 2 "Create the blank report" in order to calculate cps
+	Use this option only if the original txt file was altered because it's used by the script.
+
+	----------------------------------------Have a great day !-----------------------------------

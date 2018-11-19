@@ -1,0 +1,47 @@
+
+set heading off
+set lines 1000
+set pagesize 0
+set num 20
+set termout off
+set feedback off
+set colsep "|"
+COLUMN sne FORMAT A12
+COLUMN state FORMAT 99
+COLUMN creationdate FORMAT A19
+COLUMN expirydate FORMAT A19
+spool /ldata/support/CTS134002/voucher_data.unl
+select sne, state, 
+TO_CHAR(tools_pkg.timeint8todatelcl(creationdate), 'dd-MM-YYYY HH24:MM:SS') creationdate, 
+TO_CHAR(tools_pkg.timeint8todatelcl(expirydate), 'dd-MM-YYYY HH24:MM:SS') expirydate 
+from voucher where rownum <10 order by sne;
+spool off
+
+
+
+
+
+
+SQL> COLUMN sne FORMAT A12
+SQL> COLUMN state FORMAT A2
+SQL> COLUMN creationdate FORMAT A19
+SQL> COLUMN expirydate FORMAT A19
+SQL> select sne,state,TO_CHAR(tools_pkg.timeint8todatelcl(creationdate), 'dd-MM-YYYY HH24:MM:SS') creationdate, 
+TO_CHAR(tools_pkg.timeint8todatelcl(expirydate), 'dd-MM-YYYY HH24:MM:SS') expirydate from voucher where rownum <2;
+  2  
+  
+#!/usr/bin/ksh
+echo "@voucher_data_test.sql" | sqlplus -S voms/voms
+
+
+#!/bin/ksh
+echo "set heading off linesize 500 pages 0 num 20 colsep '|'
+		COLUMN state FORMAT A2;
+		COLUMN state FORMAT 99;
+		COLUMN creationdate FORMAT A19;
+		COLUMN expirydate FORMAT A19;
+      select sne, state, 
+TO_CHAR(tools_pkg.timeint8todatelcl(creationdate), 'dd-MM-YYYY HH24:MM:SS') creationdate, 
+TO_CHAR(tools_pkg.timeint8todatelcl(expirydate), 'dd-MM-YYYY HH24:MM:SS') expirydate 
+from voucher where rownum <10 order by sne
+;" | sqlplus -s voms/voms > /ldata/support/CTS134002/voucher_data_test.unl

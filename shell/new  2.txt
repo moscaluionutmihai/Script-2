@@ -1,0 +1,19 @@
+ #!/bin/ksh
+ 
+OUTPUT_FILE=$3 
+ 
+ if [ -z `echo $2 |grep '*'` ]
+then echo "set heading off;" >>tmp1.txt ;
+echo "set linesize 500 ;" >>tmp1.txt  ;
+echo "set pagesize 0;" >>tmp1.txt  ;
+echo "set head off;" >>tmp1.txt  ;
+echo "set trimspool on;"  >>tmp1.txt ;
+echo "set trim on;"  >>tmp1.txt ;
+echo "set termout off;"  >>tmp1.txt ;
+echo "set feedback off;" >>tmp1.txt  ;
+#echo "set colsep "|";" >>tmp1.txt  ;
+echo "spool $OUTPUT_FILE" >>tmp1.txt  ;
+echo $2 |sed 's/,/||'\''|'\''||/g' >>tmp1.txt ;
+echo "spool off;" >>tmp1.txt 
+echo "@tmp1.txt" |sqlplus -S possyr/pos && rm tmp1.txt
+fi

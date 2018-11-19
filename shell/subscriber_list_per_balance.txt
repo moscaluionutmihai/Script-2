@@ -1,0 +1,61 @@
+Hello,
+
+This is the script that we have used to extract the desired list :
+
+lsav@zpmb10 # cat unload_subscribers12.sql
+
+set heading off;
+set linesize 500 ;  
+set pagesize 0;
+set head off;
+set trimspool on;
+set trim on;
+set termout off;
+set feedback off;
+set colsep "|";
+column actorid format a9;
+column act_state format a2;
+column b1_state format a2;
+column b5_state format a2;
+column b6_state format a2;
+column LASTRCHGOKDATE format a19 ;
+column LASTRCHGKODATE format a19 ;
+column b1_ACTIVEENDDATE format a10;
+column b1_GRACEENDDATE format a10;
+column b5_GRACEENDDATE format a10;
+column b6_GRACEENDDATE format a10;
+column b5_ACTIVEENDDATE format a10;
+column b6_ACTIVEENDDATE format a10;
+spool /ldata/CTS133856/subscribers12.unl
+select 
+to_char(ar.actorid) as actorid ,
+to_char(ar.state) as act_state ,
+to_char(tools_pkg.timeint8todatelcl(ar.LASTRCHGOKDATE),'YYYY-MM-DD HH24:MI:SS') as LASTRCHGOKDATE , 
+to_char(tools_pkg.timeint8todatelcl(ar.LASTRCHGKODATE),'YYYY-MM-DD HH24:MI:SS') as LASTRCHGKODATE ,
+to_char(slc1.state) as b1_state ,
+to_char(tools_pkg.timeint8todatelcl(slc1.ACTIVEENDDATE),'YYYY-MM-DD') as b1_ACTIVEENDDATE , 
+to_char(tools_pkg.timeint8todatelcl(slc1.GRACEENDDATE),'YYYY-MM-DD') as b1_GRACEENDDATE , 
+to_char(slc5.state) as b5_state ,
+to_char(tools_pkg.timeint8todatelcl(slc5.ACTIVEENDDATE),'YYYY-MM-DD') as b5_ACTIVEENDDATE , 
+to_char(tools_pkg.timeint8todatelcl(slc5.GRACEENDDATE),'YYYY-MM-DD') as b5_GRACEENDDATE , 
+to_char(slc6.state) as b6_state ,
+to_char(tools_pkg.timeint8todatelcl(slc6.ACTIVEENDDATE),'YYYY-MM-DD') as b6_ACTIVEENDDATE , 
+to_char(tools_pkg.timeint8todatelcl(slc6.GRACEENDDATE),'YYYY-MM-DD') as b6_GRACEENDDATE  
+from actorrecharge ar
+left join subscriberlifecycle slc1 on ar.actorid=slc1.actorid and slc1.balancetypeid=1
+left join subscriberlifecycle slc5 on ar.actorid=slc5.actorid and slc5.balancetypeid=5
+left join subscriberlifecycle slc6 on ar.actorid=slc6.actorid and slc6.balancetypeid=6
+order by ar.actorid;
+spool off
+
+lsav@zpmb10 # 
+
+
+And then I run it with nohup :
+
+lsav@zpmb10 # nohup echo "@/ldata/CTS133856/unload_subscribers.sql" |sqlplus -S voms/voms   2> /ldata/CTS133856/subscribers_log.log &
+
+
+
+Best regards,
+Cristian Trufasila
