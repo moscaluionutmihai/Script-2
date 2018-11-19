@@ -1,0 +1,494 @@
+create or replace PROCEDURE MerchDelete ( mrch_id CHAR) AS
+
+   merchant_internal_id         NUMBER;
+   merchant_to_delete_balance   NUMBER;
+   merchant_to_delete_type      VARCHAR2(64);
+   children_internal_id         NUMBER;
+   children_id                  VARCHAR2(64);
+   children_balance             NUMBER;
+   pos_internal_id              NUMBER  :=0;
+   pos_merchant_id              VARCHAR2(64);
+   pos_to_delete_balance        NUMBER;
+   Mrc_ck_to_delete_balance     NUMBER;
+   
+children_balance_not_zero EXCEPTION;
+
+ --CURSOR Which check the children of a WHOLESALER  
+    CURSOR check_children_W IS
+    SELECT m.id,
+    TO_CHAR(m.merchant_id),
+    wal.BALANCE
+    FROM merchant m ,
+    merchant_p_wallet wal
+    WHERE root_id= To_number(merchant_internal_id)
+    AND m.ID  =wal.ID
+    AND M.PARENT_ID <> 0
+    ORDER BY m.NODE_DEPTH ASC ,m.name; 
+
+ --CURSOR Which check the children of a POS   
+   CURSOR check_children_P IS
+   SELECT m.id,
+ TO_CHAR(m.merchant_id),
+  wal.BALANCE
+      FROM merchant m ,
+    merchant_p_wallet wal
+WHERE parent_id= To_number(merchant_internal_id)
+AND m.ID  =wal.ID
+ORDER BY m.NODE_DEPTH ASC ,m.name;
+
+--CURSOR Which check the children of a POS which has as a parent a RETAILER  
+   CURSOR check_children_R IS
+   SELECT m.id,
+ TO_CHAR(m.merchant_id),
+  wal.BALANCE
+      FROM merchant m ,
+    merchant_p_wallet wal
+WHERE parent_id= To_number(pos_internal_id)
+AND m.ID  =wal.ID
+ORDER BY m.NODE_DEPTH ASC ,m.name;
+  
+ --CURSOR which check if a RETAILER has any POS  
+   CURSOR check_POS_FOR_RETAILER IS
+SELECT 
+m_child.ID,
+m_child.merchant_ID
+FROM merchant m_child
+WHERE EXISTS
+(SELECT *
+FROM merchant m
+WHERE m.type             ='Agent'
+AND bitand(flags,'1024')!=0
+AND m_child.parent_id    =m.id
+AND m.merchant_id        = mrch_id
+  )
+AND m_child.type ='Agent';
+   
+   
+   
+   BEGIN
+   
+   -- Retrieve type and balance of the user
+
+SELECT 
+m.id ,
+wal.BALANCE ,
+  CASE
+    WHEN m.type='Super Agent'    THEN TO_CHAR('Wholesaler')
+    WHEN m.type='Agent' AND bitand(flags,'1024')!=0 THEN TO_CHAR('Retailer')
+    WHEN m.type='Agent' THEN TO_CHAR('POS')
+    WHEN m.type='Master Manager' THEN TO_CHAR('Master Admin')
+    WHEN m.type='Manager' THEN TO_CHAR('Admin')
+    ELSE m.type  
+    END 
+    into merchant_internal_id , merchant_to_delete_balance, merchant_to_delete_type 
+FROM merchant m
+inner join merchant_p_wallet wal on m.ID = wal.ID
+WHERE  m.merchant_id = mrch_id ;
+
+        IF merchant_to_delete_type = 'Wholesaler' THEN
+        -- Check the childrens
+        OPEN check_children_W ;
+LOOP
+FETCH check_children_W INTO children_internal_id,children_id,children_balance;
+EXIT WHEN check_children_W%NOTFOUND;
+
+
+ -- Check to see if the children balance is empty, if not raise exception and exit
+ IF children_balance <> 0 THEN
+ RAISE children_balance_not_zero;
+    
+    EXIT;
+    RETURN;
+    ELSE
+    
+    -- Check if the balance is equal to zero, and if it is insert info into merchant_deleted table
+        insert into merchant_deleted 
+        select m.ID,
+        m.MERCHANT_ID,
+        m.NAME,
+        m.PASSWORD,
+        m.STATUS,
+        m.PARENT_ID,
+        m.ROOT_ID,
+        bal.BALANCE,
+        m.TYPE,
+        m.NODE_DEPTH,
+        m.EMAIL,
+        m.CONTACT_PHONE,
+        m.PREFERRED_CONTACT,
+        m.TAX_NAME,
+        m.TAX_RATE,
+        m.FREETEXT,
+        0,
+        m.BANK_ID,
+        m.FLAGS,
+        ma.CURRENCY
+        From merchant m,merchant_association ma , merchant_wallet bal
+        where m.id = ma.FK_MERCHANT_ID
+        and m.id = bal.ID
+        and m.merchant_id=children_id;
+        
+        -- Start to delete the childrens
+        
+        delete from merchant_wallet where id = children_internal_id ;
+        delete from merchant_token where id = children_internal_id ;
+        delete from merchant_p_wallet where id = children_internal_id ;
+        delete from merchant_prop where id = children_internal_id ;
+        delete from merchant_nick where id = children_internal_id ;
+        delete from MERCHANT_ASSOCIATION where fk_merchant_id = children_internal_id ;
+        delete from MERCHANT_ACTIVATION_HISTORY where id = children_internal_id ;
+        delete from evoucher_info where FK_MERCHANT_ID =children_internal_id;
+        delete from merchant_msg where DEST_ID = children_internal_id;
+        delete from  merchant_session where id = children_internal_id;
+          delete from MERCHANT_LIMIT where id = children_internal_id;
+          delete from MERCHANT_SUSPEND_FUTURE where id = children_internal_id;
+        delete From merchant where merchant_id= children_id;
+        
+        DBMS_OUTPUT.PUT_LINE( 'Children with id ' || children_id || ' of merchant ' || mrch_id || '(Wholesaler) has been deleted' );
+        
+        END IF;
+        COMMIT;
+        END LOOP;
+        CLOSE check_children_W ;
+        END IF;
+        
+
+        
+        
+        IF merchant_to_delete_type = 'POS' THEN
+         -- Check the childrens
+        OPEN check_children_P ;
+LOOP
+FETCH check_children_P INTO children_internal_id,children_id,children_balance;
+EXIT WHEN check_children_P%NOTFOUND;
+
+
+ -- Check to see if the children balance is empty, if not raise exception and exit
+ IF children_balance <> 0 THEN
+ RAISE children_balance_not_zero;
+    
+    EXIT;
+    RETURN;
+    ELSE
+    
+    -- Check if the balance is equal to zero, and if it is insert info into merchant_deleted table
+        insert into merchant_deleted 
+        select m.ID,
+        m.MERCHANT_ID,
+        m.NAME,
+        m.PASSWORD,
+        m.STATUS,
+        m.PARENT_ID,
+        m.ROOT_ID,
+        bal.BALANCE,
+        m.TYPE,
+        m.NODE_DEPTH,
+        m.EMAIL,
+        m.CONTACT_PHONE,
+        m.PREFERRED_CONTACT,
+        m.TAX_NAME,
+        m.TAX_RATE,
+        m.FREETEXT,
+        0,
+        m.BANK_ID,
+        m.FLAGS,
+        ma.CURRENCY
+        From merchant m,merchant_association ma , merchant_wallet bal
+        where m.id = ma.FK_MERCHANT_ID
+        and m.id = bal.ID
+        and m.merchant_id=children_id;
+        
+        -- Start to delete the childrens
+        
+        delete from merchant_wallet where id = children_internal_id ;
+        delete from merchant_token where id = children_internal_id ;
+        delete from merchant_p_wallet where id = children_internal_id ;
+        delete from merchant_prop where id = children_internal_id ;
+        delete from merchant_nick where id = children_internal_id ;
+        delete from MERCHANT_ASSOCIATION where fk_merchant_id = children_internal_id ;
+        delete from MERCHANT_ACTIVATION_HISTORY where id = children_internal_id ;
+        delete from evoucher_info where FK_MERCHANT_ID =children_internal_id;
+        delete from merchant_msg where DEST_ID = children_internal_id;
+        delete from  merchant_session where id = children_internal_id;
+          delete from MERCHANT_LIMIT where id = children_internal_id;
+          delete from MERCHANT_SUSPEND_FUTURE where id = children_internal_id;
+        delete From merchant where merchant_id= children_id;
+        
+        DBMS_OUTPUT.PUT_LINE( 'Children with id ' || children_id || ' of merchant ' || mrch_id || '  (POS) has been deleted' );
+        
+        END IF;
+        COMMIT;
+        END LOOP;
+        CLOSE check_children_P ;
+        END IF;
+        
+        
+        
+        
+        IF merchant_to_delete_type = 'Retailer' THEN
+       
+-- Check if the  RETAILER has any POS
+OPEN check_POS_FOR_RETAILER;
+LOOP
+FETCH check_POS_FOR_RETAILER INTO pos_internal_id , pos_merchant_id;
+EXIT WHEN check_POS_FOR_RETAILER%NOTFOUND;
+
+
+
+
+         -- Check the childrens of POS associated with this Retailer
+        OPEN check_children_R ;
+LOOP
+FETCH check_children_R INTO children_internal_id,children_id,children_balance;
+EXIT WHEN check_children_R%NOTFOUND;
+
+
+ -- Check to see if the children balance is empty, if not raise exception and exit
+ IF children_balance <> 0 THEN
+ RAISE children_balance_not_zero;
+    
+    EXIT;
+    RETURN;
+    ELSE
+    
+    -- Check if the balance is equal to zero, and if it is insert info into merchant_deleted table
+        insert into merchant_deleted 
+        select m.ID,
+        m.MERCHANT_ID,
+        m.NAME,
+        m.PASSWORD,
+        m.STATUS,
+        m.PARENT_ID,
+        m.ROOT_ID,
+        bal.BALANCE,
+        m.TYPE,
+        m.NODE_DEPTH,
+        m.EMAIL,
+        m.CONTACT_PHONE,
+        m.PREFERRED_CONTACT,
+        m.TAX_NAME,
+        m.TAX_RATE,
+        m.FREETEXT,
+        0,
+        m.BANK_ID,
+        m.FLAGS,
+        ma.CURRENCY
+        From merchant m,merchant_association ma , merchant_wallet bal
+        where m.id = ma.FK_MERCHANT_ID
+        and m.id = bal.ID
+        and m.merchant_id=children_id;
+        
+        -- Start to delete the childrens
+        
+        delete from merchant_wallet where id = children_internal_id ;
+        delete from merchant_token where id = children_internal_id ;
+        delete from merchant_p_wallet where id = children_internal_id ;
+        delete from merchant_prop where id = children_internal_id ;
+        delete from merchant_nick where id = children_internal_id ;
+        delete from MERCHANT_ASSOCIATION where fk_merchant_id = children_internal_id ;
+        delete from MERCHANT_ACTIVATION_HISTORY where id = children_internal_id ;
+        delete from evoucher_info where FK_MERCHANT_ID =children_internal_id;
+        delete from merchant_msg where DEST_ID = children_internal_id;
+        delete from  merchant_session where id = children_internal_id;
+        delete from MERCHANT_LIMIT where id = children_internal_id;
+        delete from MERCHANT_SUSPEND_FUTURE where id = children_internal_id;
+        delete From merchant where merchant_id= children_id;
+        
+        DBMS_OUTPUT.PUT_LINE( 'Children with id ' || children_id || ' of merchant ' || mrch_id || ' (Retailer) has been deleted' );
+        
+        END IF;
+        COMMIT;
+        END LOOP;
+        CLOSE check_children_R ;
+       
+       --Check the balance of the POS user associated with this retailer
+       select balance into pos_to_delete_balance
+       from merchant_p_wallet 
+       where id= To_number(pos_internal_id);
+       
+       
+       IF pos_to_delete_balance = 0 THEN
+   insert into merchant_deleted 
+   select m.ID,
+   m.MERCHANT_ID,
+   m.NAME,
+   m.PASSWORD,
+   m.STATUS,
+   m.PARENT_ID,
+   m.ROOT_ID,
+   bal.BALANCE,
+   m.TYPE,
+   m.NODE_DEPTH,
+   m.EMAIL,
+   m.CONTACT_PHONE,
+   m.PREFERRED_CONTACT,
+   m.TAX_NAME,
+   m.TAX_RATE,
+   m.FREETEXT,
+   0,
+    m.BANK_ID,
+    m.FLAGS,
+    ma.CURRENCY
+    From merchant m,merchant_association ma , merchant_wallet bal
+    where m.id = ma.FK_MERCHANT_ID
+    and m.id = bal.ID
+    and m.merchant_id=pos_merchant_id;
+    
+    -- Delete the user
+    delete from merchant_wallet where id = merchant_internal_id ;
+    delete from merchant_token where id = merchant_internal_id ;
+    delete from merchant_p_wallet where id = merchant_internal_id ;
+    delete from merchant_prop where id = merchant_internal_id ;
+    delete from merchant_nick where id = merchant_internal_id ;
+    delete from MERCHANT_ASSOCIATION where fk_merchant_id = merchant_internal_id ;
+    delete from MERCHANT_ACTIVATION_HISTORY where id = merchant_internal_id ;
+    delete from evoucher_info where FK_MERCHANT_ID =merchant_internal_id;
+    delete from merchant_msg where DEST_ID = merchant_internal_id;
+    delete from  merchant_session where id = merchant_internal_id;
+    delete from MERCHANT_LIMIT where id = merchant_internal_id;
+    delete from MERCHANT_SUSPEND_FUTURE where id = merchant_internal_id;
+    delete From merchant where merchant_id= pos_merchant_id;
+    DBMS_OUTPUT.PUT_LINE('The POS with id ' || pos_merchant_id || ' (Retailer) has been deleted' );
+        ELSE 
+        DBMS_OUTPUT.PUT_LINE('The POS with id ' || pos_merchant_id || ' has a non zero balance!' );
+        return;
+        END IF;
+       
+       COMMIT;
+        END LOOP;
+        CLOSE check_POS_FOR_RETAILER ;
+        
+       -- Delete the Retailer children
+       
+      
+       OPEN check_children_P;
+       LOOP
+FETCH check_children_P INTO children_internal_id,children_id,children_balance;
+EXIT WHEN check_children_P%NOTFOUND;
+
+ -- Check to see if the children balance is empty, if not raise exception and exit
+ IF children_balance <> 0 THEN
+ RAISE children_balance_not_zero;
+    
+    EXIT;
+    RETURN;
+    ELSE
+    
+    -- Check if the balance is equal to zero, and if it is insert info into merchant_deleted table
+        insert into merchant_deleted 
+        select m.ID,
+        m.MERCHANT_ID,
+        m.NAME,
+        m.PASSWORD,
+        m.STATUS,
+        m.PARENT_ID,
+        m.ROOT_ID,
+        bal.BALANCE,
+        m.TYPE,
+        m.NODE_DEPTH,
+        m.EMAIL,
+        m.CONTACT_PHONE,
+        m.PREFERRED_CONTACT,
+        m.TAX_NAME,
+        m.TAX_RATE,
+        m.FREETEXT,
+        0,
+        m.BANK_ID,
+        m.FLAGS,
+        ma.CURRENCY
+        From merchant m,merchant_association ma , merchant_wallet bal
+        where m.id = ma.FK_MERCHANT_ID
+        and m.id = bal.ID
+        and m.merchant_id=children_id;
+        
+        -- Start to delete the childrens
+        
+        delete from merchant_wallet where id = children_internal_id ;
+        delete from merchant_token where id = children_internal_id ;
+        delete from merchant_p_wallet where id = children_internal_id ;
+        delete from merchant_prop where id = children_internal_id ;
+        delete from merchant_nick where id = children_internal_id ;
+        delete from MERCHANT_ASSOCIATION where fk_merchant_id = children_internal_id ;
+        delete from MERCHANT_ACTIVATION_HISTORY where id = children_internal_id ;
+        delete from evoucher_info where FK_MERCHANT_ID =children_internal_id;
+        delete from merchant_msg where DEST_ID = children_internal_id;
+        delete from  merchant_session where id = children_internal_id;
+        delete from MERCHANT_LIMIT where id = children_internal_id;
+        delete from MERCHANT_SUSPEND_FUTURE where id = children_internal_id;
+        delete From merchant where merchant_id= children_id;
+        
+        DBMS_OUTPUT.PUT_LINE( 'Children with id ' || children_id || ' of merchant ' || mrch_id || ' (Retailer) has been deleted' );
+        
+        END IF;
+        COMMIT;
+        END LOOP;
+       CLOSE check_children_P ;
+        END IF;
+           
+        
+
+
+--Check the balance of the POS user associated with this retailer
+       select balance into Mrc_ck_to_delete_balance
+       from merchant_p_wallet 
+       where id= To_number(merchant_internal_id);
+      
+  -- Check if the merchant that need to be deleted has the balance equal to 0. If yes insert info into merchant_deleted table
+  IF Mrc_ck_to_delete_balance = 0 THEN
+   insert into merchant_deleted 
+   select m.ID,
+   m.MERCHANT_ID,
+   m.NAME,
+   m.PASSWORD,
+   m.STATUS,
+   m.PARENT_ID,
+   m.ROOT_ID,
+   bal.BALANCE,
+   m.TYPE,
+   m.NODE_DEPTH,
+   m.EMAIL,
+   m.CONTACT_PHONE,
+   m.PREFERRED_CONTACT,
+   m.TAX_NAME,
+   m.TAX_RATE,
+   m.FREETEXT,
+   0,
+    m.BANK_ID,
+    m.FLAGS,
+    ma.CURRENCY
+    From merchant m,merchant_association ma , merchant_wallet bal
+    where m.id = ma.FK_MERCHANT_ID
+    and m.id = bal.ID
+    and m.merchant_id=mrch_id;
+    
+    -- Delete the user
+    delete from merchant_wallet where id = merchant_internal_id ;
+    delete from merchant_token where id = merchant_internal_id ;
+    delete from merchant_p_wallet where id = merchant_internal_id ;
+    delete from merchant_prop where id = merchant_internal_id ;
+    delete from merchant_nick where id = merchant_internal_id ;
+    delete from MERCHANT_ASSOCIATION where fk_merchant_id = merchant_internal_id ;
+    delete from MERCHANT_ACTIVATION_HISTORY where id = merchant_internal_id ;
+    delete from evoucher_info where FK_MERCHANT_ID =merchant_internal_id;
+    delete from merchant_msg where DEST_ID = merchant_internal_id;
+    delete from  merchant_session where id = merchant_internal_id;
+    delete from MERCHANT_LIMIT where id = merchant_internal_id;
+    delete from MERCHANT_SUSPEND_FUTURE where id = merchant_internal_id;
+    delete From merchant where merchant_id= mrch_id;
+    DBMS_OUTPUT.PUT_LINE('The ' || merchant_to_delete_type || ' with id ' || mrch_id || ' (General) has been deleted' );
+        ELSE 
+        DBMS_OUTPUT.PUT_LINE('The MERCHANT with id ' || mrch_id || ' (General) has a non zero balance!' );
+        return;
+        END IF;
+        
+ 
+    
+COMMIT;
+
+EXCEPTION
+   WHEN no_data_found THEN
+      dbms_output.put_line('The merchant does not exist!');
+      WHEN children_balance_not_zero THEN
+       DBMS_OUTPUT.PUT_LINE('The children with id ' || children_id || ' has a non zero balance!' );
+
+   END;

@@ -1,0 +1,50 @@
+create or replace PROCEDURE BI_Delete ( rowtodelete Number) AS
+transaction_id_to_delete    NUMBER;
+    tsStartTime TIMESTAMP;
+    tsEndTime TIMESTAMP;
+     COUNTER INTEGER :=0;
+     Counting INTEGER :=0;
+
+
+CURSOR TRANSACTION_ID_C 
+IS
+SELECT distinct(txn_id)
+FROM external_system_bi 
+WHERE 
+txn_id not in ( select txn_id from bill_txn_detail )
+AND
+rownum < rowtodelete ;
+
+
+BEGIN
+
+EXECUTE IMMEDIATE 'ALTER SESSION SET NLS_TIMESTAMP_FORMAT = "DD-MON-RR HH.MI.SS AM"';
+EXECUTE IMMEDIATE 'ALTER SESSION SET NLS_DATE_FORMAT="YYYY-MON-DD HH24:MI:SS"';
+    tsStartTime := CURRENT_TIMESTAMP;
+    DBMS_OUTPUT.PUT_LINE('BI_Delete procedure has started at: ' || tsStartTime);
+
+OPEN TRANSACTION_ID_C ;
+LOOP 
+FETCH TRANSACTION_ID_C INTO transaction_id_to_delete ;
+EXIT WHEN TRANSACTION_ID_C%NOTFOUND;
+
+
+
+ delete from external_system_bi         where txn_id=transaction_id_to_delete;
+ 
+  Counting := sql%rowcount ;
+  
+COUNTER := COUNTER + Counting;
+ 
+-- DBMS_OUTPUT.PUT_LINE('Transaction ID ' || transaction_id_to_delete || ' marked for deletion' );
+-- dbms_output.put_line( 'Deleted ' || sql%rowcount || ' row(s)' );
+COMMIT;
+
+
+ END LOOP;
+ CLOSE TRANSACTION_ID_C ;
+tsEndTime := CURRENT_TIMESTAMP;
+    DBMS_OUTPUT.PUT_LINE('BI_Delete procedure has ended at: ' ||tsEndTime);
+     DBMS_OUTPUT.PUT_LINE('Time elapsed:' || to_char(tsEndTime - tsStartTime));
+     DBMS_OUTPUT.PUT_LINE('The number of rows:' || COUNTER );
+  END;

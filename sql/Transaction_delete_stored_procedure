@@ -1,0 +1,46 @@
+create or replace PROCEDURE TransactionDelete ( month_to_delete Char) AS
+transaction_id_to_delete    NUMBER;
+
+
+CURSOR TRANSACTION_ID_C 
+IS
+SELECT txn_id
+FROM bill_txn_detail
+WHERE REGION_ID='AFRICA'
+and to_char(REPORTING_TIMESTAMP,'yyyy-mm') = month_to_delete ;
+
+
+BEGIN
+
+EXECUTE IMMEDIATE 'ALTER SESSION SET NLS_TIMESTAMP_FORMAT = "DD-MON-RR HH.MI.SSXFF AM"';
+EXECUTE IMMEDIATE 'ALTER SESSION SET NLS_DATE_FORMAT="YYYY-MON-DD HH24:MI:SS"';
+
+
+
+OPEN TRANSACTION_ID_C ;
+LOOP 
+FETCH TRANSACTION_ID_C INTO transaction_id_to_delete ;
+EXIT WHEN TRANSACTION_ID_C%NOTFOUND;
+
+
+
+delete from bill_txn_fee         where txn_id=transaction_id_to_delete;
+delete from bill_txn_failure     where txn_id=transaction_id_to_delete;
+delete from bill_txn_commission  where txn_id=transaction_id_to_delete;
+delete from  bill_txn_aml        where txn_id=transaction_id_to_delete;
+delete from  bill_txn_tax        where txn_id=transaction_id_to_delete;
+delete from  bill_txn_prop       where txn_id=transaction_id_to_delete;
+delete from  bill_txn_exp        where txn_id=transaction_id_to_delete;
+delete from bank_subtxn          where txn_id=transaction_id_to_delete;
+
+--Delete bill_txn and bill_txn_detail tables :
+
+delete from bill_txn_detail where txn_id=transaction_id_to_delete;
+delete from bill_txn        where txn_id=transaction_id_to_delete;
+
+COMMIT;
+
+ DBMS_OUTPUT.PUT_LINE('Transaction ID ' || transaction_id_to_delete || ' has been deleted' );
+ END LOOP;
+ CLOSE TRANSACTION_ID_C ;
+  END;
