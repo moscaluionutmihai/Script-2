@@ -8,26 +8,28 @@ import cx_Oracle
 from colorama import Fore, Back, Style
 
 
+## Show info
+## Global Setings
 
+print('\n\nThis script was build in order to help you to make a network change for Canal+ customer')
+print('\nYou will be asked for several parameter . Please pay attention to index counting. You must start from 0 (zero) not from 1')
+print('\nEngineer that made this script is Moscalu Ionut.If any issue with this script please contact him.')
 
-
-## Setare variabile globale
-
-GLOBAL_CSV_FILE=input("Please provide excel file received from the customer (it must be into single quotes): ")
-MERCHANT_ID_INDEX=input("Please input the column number of the merchant_id that will be changed :")
-NEW_CGA_WEB_ID_INDEX=input("Please input the column number of the NEW CGAWEB_ID:")
-OLD_CGA_WEB_ID_INDEX=input("Please input the column number of the OLD CGAWEB_ID:")
-NEW_PARENT_ID_INDEX=input("Please input the column number of the NEW PARENT MERCHANT_ID:")
+GLOBAL_CSV_FILE=input("\nPlease provide excel file received from the customer (it must be into single quotes, and CSV format): ")
+MERCHANT_ID_INDEX=input("\nPlease input the column number of the merchant_id that will be changed :")
+NEW_CGA_WEB_ID_INDEX=input("\nPlease input the column number of the NEW CGAWEB_ID:")
+OLD_CGA_WEB_ID_INDEX=input("\nPlease input the column number of the OLD CGAWEB_ID:")
+NEW_PARENT_ID_INDEX=input("\nPlease input the column number of the NEW PARENT MERCHANT_ID:")
 
 CGAWEB_ID_SQL_FILE='Update_CGAWEB_ID.sql'
 PARENT_ID_SQL_FILE='Update_PARENT_ID.sql'
 ROOT_ID_SQL_FILE='Update_ROOT_ID.sql'
 num_lines = len(list(open(GLOBAL_CSV_FILE)))
 
-## Prezentam optiunile existente
 
 
-## Verificam daca avem useri de mai multe ori in fisier si daca useri dati exista in baza de date
+
+## Check if we have duplicate users and if they exist into DB
 def check_merchant_id():
 
     coloumn2 = []
@@ -65,7 +67,7 @@ def check_merchant_id():
                 sys.exit()
 
 
-## Facem backup acelor useri
+## Backup DB users data 
 def backup_users(output_file):
     with open(GLOBAL_CSV_FILE,mode = 'r') as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
@@ -94,7 +96,7 @@ def backup_users(output_file):
                     FILE.close()
     csv_file.close()
 
-## Pregatim fisier pt update CGAWEB ID
+## Prepare SQL file for  CGAWEB ID change
 
 def cgaweb_prepare_file():
     with open(CGAWEB_ID_SQL_FILE,mode = 'w') as f:
@@ -109,7 +111,7 @@ def cgaweb_prepare_file():
                     line_count += 1
                 
                 
-##Pregatim fisier pt update parent id 
+##Prepare SQL file for Parent ID change 
 def parent_prepare_file():
     with open(PARENT_ID_SQL_FILE,mode = 'w') as f:
         with open(GLOBAL_CSV_FILE,mode = 'r') as csv_file:
@@ -123,7 +125,7 @@ def parent_prepare_file():
                     line_count += 1
 
 
-## Pregatim fisier pt update root id
+## Prepare SQL file for ROOT ID change 
 def root_prepare_file():
     with open(ROOT_ID_SQL_FILE,mode = 'w') as f:
         with open(GLOBAL_CSV_FILE,mode = 'r') as csv_file:
@@ -136,10 +138,11 @@ def root_prepare_file():
                     print >> f, ("update merchant set ROOT_ID=(select id from merchant where merchant_id='{}') where parent_ID=(select id from merchant where MERCHANT_ID='{}');".format(row[NEW_PARENT_ID_INDEX],row[MERCHANT_ID_INDEX]))
                     line_count += 1
 
-                
+## Running all function defined abowe                
 if __name__ == '__main__':
+    intro()
     check_merchant_id()
-    backup_users(input("Please provide a file name for backup current configuration of the users(it must be into single quotes) : "))
+    backup_users(input("\nPlease provide a file name for backup current configuration of the users(it must be into single quotes) : "))
     cgaweb_prepare_file()
     parent_prepare_file()
     root_prepare_file()
