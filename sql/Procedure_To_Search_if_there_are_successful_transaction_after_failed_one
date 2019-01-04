@@ -1,0 +1,45 @@
+create or replace PROCEDURE select_transaction AS
+transaction_id    NUMBER;
+searching_id      NUMBER;
+destination_id    NUMBER;
+price_nb          NUMBER;
+new_txn_id        NUMBER;
+    tsStartTime TIMESTAMP;
+
+
+
+CURSOR TRANSACTION_ID_C 
+IS
+SELECT btd.txn_id ,bt.src_id ,bt.dest_id ,bt.price
+FROM Bill_Txn_Detail btd
+INNER JOIN Bill_txn bt on bt.txn_id = btd.txn_id
+WHERE btd.reporting_status = 'fail'
+AND btd.reporting_timestamp BETWEEN '2019-JAN-01 00:00:00' AND '2019-JAN-01 08:30:00'
+AND btd.reporting_seq = 2
+AND bt.seq_id = 2;
+
+
+BEGIN
+
+    tsStartTime := CURRENT_TIMESTAMP;
+    DBMS_OUTPUT.PUT_LINE('BI_Delete procedure has started at: ' || tsStartTime);
+
+OPEN TRANSACTION_ID_C ;
+LOOP 
+FETCH TRANSACTION_ID_C INTO transaction_id, searching_id ,destination_id , price_nb ;
+EXIT WHEN TRANSACTION_ID_C%NOTFOUND;
+
+    BEGIN
+        Select txn_id INTO new_txn_id from Bill_txn where dest_id=destination_id and price = price_nb and timestamp  > '01-JAN-19 08.30.00.000000000 AM' and seq_id =4 and rownum <2;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        new_txn_id := NULL;
+    END;
+
+DBMS_OUTPUT.PUT_LINE(transaction_id || ' ' || searching_id || ' ' || destination_id || ' ' || price_nb || ' ' || 'The following transaction has the same details:'  || ' ' || new_txn_id);
+
+
+
+ END LOOP;
+ CLOSE TRANSACTION_ID_C ;
+  END;
